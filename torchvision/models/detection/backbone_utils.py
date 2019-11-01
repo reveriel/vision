@@ -28,8 +28,10 @@ class BackboneWithFPN(nn.Sequential):
     Attributes:
         out_channels (int): the number of channels in the FPN
     """
+
     def __init__(self, backbone, return_layers, in_channels_list, out_channels):
         body = IntermediateLayerGetter(backbone, return_layers=return_layers)
+
         fpn = FeaturePyramidNetwork(
             in_channels_list=in_channels_list,
             out_channels=out_channels,

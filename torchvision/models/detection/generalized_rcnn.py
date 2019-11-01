@@ -71,32 +71,50 @@ class GeneralizedRCNN(nn.Module):
         original_image_sizes = [img.shape[-2:] for img in images]
         t = time()
         images, targets = self.transform(images, targets)
-        self.transform_t.update(time() - t)
-        t = time()
+
+        flag_t = False
+
+        if flag_t:
+            torch.cuda.synchronize()
+            self.transform_t.update(time() - t)
+            t = time()
+
         features = self.backbone(images.tensors)
-        self.backbone_t.update(time() - t)
-        t = time()
+
+        if flag_t:
+            torch.cuda.synchronize()
+            self.backbone_t.update(time() - t)
+            t = time()
+
         if isinstance(features, torch.Tensor):
             features = OrderedDict([(0, features)])
         proposals, proposal_losses = self.rpn(images, features, targets)
-        self.rpn_t.update(time() - t)
-        t = time()
+
+        if flag_t:
+            torch.cuda.synchronize()
+            self.rpn_t.update(time() - t)
+            t = time()
 
         detections, detector_losses = self.roi_heads(features, proposals, images.image_sizes, targets)
 
-        self.roi_heads_t.update(time() - t)
-        t = time()
+        if flag_t:
+            torch.cuda.synchronize()
+            self.roi_heads_t.update(time() - t)
+            t = time()
+
         detections = self.transform.postprocess(detections, images.image_sizes, original_image_sizes)
-        self.post_transform_t.update(time() - t)
 
-        print("       {:.3f} {:.3f} {:.3f} {:.3f} {:.3f}".format(
-            self.transform_t.avg,
-            self.backbone_t.avg,
-            self.rpn_t.avg,
-            self.roi_heads_t.avg,
-            self.post_transform_t.avg
+        if flag_t:
+            torch.cuda.synchronize()
+            self.post_transform_t.update(time() - t)
 
-        ))
+            print("       {:.3f} {:.3f} {:.3f} {:.3f} {:.3f}".format(
+                self.transform_t.avg,
+                self.backbone_t.avg,
+                self.rpn_t.avg,
+                self.roi_heads_t.avg,
+                self.post_transform_t.avg))
+
         losses = {}
         losses.update(detector_losses)
         losses.update(proposal_losses)
